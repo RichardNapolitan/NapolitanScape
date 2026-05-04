@@ -142,12 +142,12 @@ public class Main implements ApplicationListener {
         viewport = new FitViewport(8, 5);
 
         // animation strips
-        playerWalkAnimation = new Animation<>(0.10f, makeStrip(playerWalkSheet, 5));
-        playerShootAnimation = new Animation<>(0.08f, makeStrip(playerShootSheet, 4));
-        playerDieAnimation = new Animation<>(0.15f, makeStrip(playerDieSheet, 5));
-        enemyFloatAnimation = new Animation<>(0.12f, makeStrip(enemyFloatSheet, 6));
-        toughEnemyAnimation = new Animation<>(0.12f, makeStrip(toughEnemySheet, 6));
-        bossAnimation = new Animation<>(0.12f, makeStrip(bossSheet, 1));
+        playerWalkAnimation = new Animation<>(0.10f, makeFrames(playerWalkSheet, 16, 5));
+        playerShootAnimation = new Animation<>(0.08f, makeFrames(playerShootSheet, 4, 4));
+        playerDieAnimation = new Animation<>(0.15f, makeFrames(playerDieSheet, 5, 5));
+        enemyFloatAnimation = new Animation<>(0.12f, makeFrames(enemyFloatSheet, 16, 6));
+        toughEnemyAnimation = new Animation<>(0.12f, makeFrames(toughEnemySheet, 16, 6));
+        bossAnimation = new Animation<>(0.16f, makeFrames(bossSheet, 16, 3));
 
         playerStateTime = 0f;
         enemyStateTime = 0f;
@@ -207,11 +207,9 @@ public class Main implements ApplicationListener {
     }
 
     private TextureRegion[] makeFrames(Texture texture, int preferredCount, int fallbackCount) {
-        if (texture.getWidth() % preferredCount == 0) {
-            return makeStrip(texture, preferredCount);
-        }
-
         int side = (int) Math.sqrt(preferredCount);
+
+        // Prefer 4x4/3x3 style atlas extraction for modern sprite sheets.
         if (side * side == preferredCount && texture.getWidth() % side == 0 && texture.getHeight() % side == 0) {
             TextureRegion[][] grid = TextureRegion.split(texture, texture.getWidth() / side, texture.getHeight() / side);
             TextureRegion[] frames = new TextureRegion[preferredCount];
@@ -224,6 +222,7 @@ public class Main implements ApplicationListener {
             return frames;
         }
 
+        // Fallback for legacy single-row strips.
         return makeStrip(texture, fallbackCount);
     }
 
@@ -376,7 +375,7 @@ public class Main implements ApplicationListener {
 
     private void drawEnemies() {
         TextureRegion normalFrame = enemyFloatAnimation.getKeyFrame(enemyStateTime, true);
-*-         TextureRegion toughFrame = toughEnemyAnimation.getKeyFrame(0, false);
+        TextureRegion toughFrame = toughEnemyAnimation.getKeyFrame(enemyStateTime, true);
         TextureRegion bossFrame = bossAnimation.getKeyFrame(enemyStateTime, true);
 
         for (Enemy enemy : enemies) {
@@ -831,7 +830,7 @@ public class Main implements ApplicationListener {
     }
 
     private float getEnemyWidth(Enemy enemy) {
-        if (enemy.isBoss()) return 2.2f;
+        if (enemy.isBoss()) return 1.45f;
         if (enemy.isTough()) return 0.95f;
         return 0.8f;
     }

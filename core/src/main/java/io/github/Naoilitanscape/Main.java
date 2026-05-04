@@ -148,15 +148,15 @@ public class Main implements ApplicationListener {
         viewport = new FitViewport(8, 5);
 
         // animation strips
-        playerWalkAnimation = new Animation<>(0.10f, makeStrip(playerWalkSheet, 5));
-        playerShootAnimation = new Animation<>(0.08f, makeStrip(playerShootSheet, 4));
-        playerDieAnimation = new Animation<>(0.15f, makeStrip(playerDieSheet, 5));
-        enemyFloatAnimation = new Animation<>(0.12f, makeStrip(enemyFloatSheet, 6));
+        playerWalkAnimation = new Animation<>(0.10f, makeAtlasRowFrames(playerWalkSheet, 4, 4, 0, 4, 5));
+        playerShootAnimation = new Animation<>(0.08f, makeFrames(playerShootSheet, 4, 4));
+        playerDieAnimation = new Animation<>(0.15f, makeFrames(playerDieSheet, 5, 5));
+        enemyFloatAnimation = new Animation<>(0.12f, makeAtlasRowFrames(enemyFloatSheet, 4, 4, 0, 4, 6));
         demonEnemyAnimation = demonEnemySheet != null
-                ? new Animation<>(0.12f, makeStrip(demonEnemySheet, 4))
+                ? new Animation<>(0.12f, makeAtlasRowFrames(demonEnemySheet, 4, 4, 0, 4, 4))
                 : null;
-        toughEnemyAnimation = new Animation<>(0.12f, makeStrip(toughEnemySheet, 6));
-        bossAnimation = new Animation<>(0.16f, makeStrip(bossSheet, 3));
+        toughEnemyAnimation = new Animation<>(0.12f, makeAtlasRowFrames(toughEnemySheet, 4, 4, 0, 4, 6));
+        bossAnimation = new Animation<>(0.16f, makeAtlasRowFrames(bossSheet, 4, 4, 0, 4, 3));
 
         playerStateTime = 0f;
         enemyStateTime = 0f;
@@ -213,6 +213,19 @@ public class Main implements ApplicationListener {
         }
 
         return frames;
+    }
+
+    private TextureRegion[] makeAtlasRowFrames(Texture texture, int cols, int rows, int rowIndex, int frameCount, int fallbackCount) {
+        if (texture.getWidth() % cols == 0 && texture.getHeight() % rows == 0 && rowIndex >= 0 && rowIndex < rows) {
+            TextureRegion[][] grid = TextureRegion.split(texture, texture.getWidth() / cols, texture.getHeight() / rows);
+            TextureRegion[] frames = new TextureRegion[frameCount];
+            for (int i = 0; i < frameCount; i++) {
+                frames[i] = grid[rowIndex][i % cols];
+            }
+            return frames;
+        }
+
+        return makeStrip(texture, fallbackCount);
     }
 
     private TextureRegion[] makeFrames(Texture texture, int preferredCount, int fallbackCount) {
@@ -398,7 +411,9 @@ public class Main implements ApplicationListener {
             } else if (enemy.isDemon() && demonEnemyAnimation != null) {
                 frame = demonEnemyAnimation.getKeyFrame(enemyStateTime, true);
             } else {
-                frame = normalFrame;
+                frame = (demonEnemyAnimation != null && ((int) enemy.getX()) % 2 == 0)
+                        ? demonEnemyAnimation.getKeyFrame(enemyStateTime, true)
+                        : normalFrame;
             }
 
             boolean enemyFacesRight = player.getX() > enemy.getX();
@@ -847,7 +862,7 @@ public class Main implements ApplicationListener {
     }
 
     private float getEnemyHeight(Enemy enemy) {
-        if (enemy.isBoss()) return 1.45f;
+        if (enemy.isBoss()) return 2.2f;
         if (enemy.isTough()) return 1.15f;
         return 1.0f;
     }

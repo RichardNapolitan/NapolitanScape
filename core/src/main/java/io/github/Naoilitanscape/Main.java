@@ -836,7 +836,7 @@ public class Main implements ApplicationListener {
     }
 
     private float getEnemyHeight(Enemy enemy) {
-        if (enemy.isBoss()) return 1.45f;
+        if (enemy.isBoss()) return 2.2f;
         if (enemy.isTough()) return 1.15f;
         return 1.0f;
     }

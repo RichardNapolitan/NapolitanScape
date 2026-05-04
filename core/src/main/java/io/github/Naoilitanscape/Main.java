@@ -356,7 +356,7 @@ public class Main implements ApplicationListener {
     private void drawEnemies() {
         TextureRegion normalFrame = enemyFloatAnimation.getKeyFrame(enemyStateTime, true);
         TextureRegion toughFrame = toughEnemyAnimation.getKeyFrame(0, false);
-        TextureRegion bossFrame = bossAnimation.getKeyFrame(0, false);
+        TextureRegion bossFrame = bossAnimation.getKeyFrame(enemyStateTime, true);
 
         for (Enemy enemy : enemies) {
             if (enemy.isDying()) continue;

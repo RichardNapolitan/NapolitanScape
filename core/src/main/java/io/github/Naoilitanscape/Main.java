@@ -30,6 +30,7 @@ public class Main implements ApplicationListener {
     private Texture playerShootSheet;
     private Texture playerDieSheet;
     private Texture enemyFloatSheet;
+    private Texture demonEnemySheet;
     private Texture toughEnemySheet;
     private Texture bossSheet;
     private Texture laserImage;
@@ -54,6 +55,7 @@ public class Main implements ApplicationListener {
     private Animation<TextureRegion> playerShootAnimation;
     private Animation<TextureRegion> playerDieAnimation;
     private Animation<TextureRegion> enemyFloatAnimation;
+    private Animation<TextureRegion> demonEnemyAnimation;
     private Animation<TextureRegion> toughEnemyAnimation;
     private Animation<TextureRegion> bossAnimation;
 
@@ -104,6 +106,7 @@ public class Main implements ApplicationListener {
     private int nextDifficultyScore;
     private float collisionWait;
     private boolean gameOver;
+    private boolean gameWon;
 
     @Override
     public void create() {
@@ -113,6 +116,9 @@ public class Main implements ApplicationListener {
         playerShootSheet = new Texture("player-shoot-clean-strip.png");
         playerDieSheet = new Texture("player-die-clean-strip.png");
         enemyFloatSheet = new Texture("enemy-float-clean-strip.png");
+        if (Gdx.files.internal("enemy-demon.png").exists()) {
+            demonEnemySheet = new Texture("enemy-demon.png");
+        }
         toughEnemySheet = new Texture("Enemy_Tougher.png");
         bossSheet = new Texture("Boss.png");
         laserImage = new Texture("Laser-shot.png");
@@ -127,6 +133,7 @@ public class Main implements ApplicationListener {
         setNearest(playerShootSheet);
         setNearest(playerDieSheet);
         setNearest(enemyFloatSheet);
+        if (demonEnemySheet != null) setNearest(demonEnemySheet);
         setNearest(toughEnemySheet);
         setNearest(bossSheet);
         setNearest(laserImage);
@@ -141,12 +148,15 @@ public class Main implements ApplicationListener {
         viewport = new FitViewport(8, 5);
 
         // animation strips
-        playerWalkAnimation = new Animation<>(0.10f, makeStrip(playerWalkSheet, 5));
-        playerShootAnimation = new Animation<>(0.08f, makeStrip(playerShootSheet, 4));
-        playerDieAnimation = new Animation<>(0.15f, makeStrip(playerDieSheet, 5));
-        enemyFloatAnimation = new Animation<>(0.12f, makeStrip(enemyFloatSheet, 6));
-        toughEnemyAnimation = new Animation<>(0.12f, makeStrip(toughEnemySheet, 6));
-        bossAnimation = new Animation<>(0.12f, makeStrip(bossSheet, 6));
+        playerWalkAnimation = new Animation<>(0.10f, makeAtlasRowFrames(playerWalkSheet, 4, 4, 0, 4, 5));
+        playerShootAnimation = new Animation<>(0.08f, makeFrames(playerShootSheet, 4, 4));
+        playerDieAnimation = new Animation<>(0.15f, makeFrames(playerDieSheet, 5, 5));
+        enemyFloatAnimation = new Animation<>(0.12f, makeAtlasRowFrames(enemyFloatSheet, 4, 4, 0, 4, 6));
+        demonEnemyAnimation = demonEnemySheet != null
+                ? new Animation<>(0.12f, makeAtlasRowFrames(demonEnemySheet, 4, 4, 0, 4, 4))
+                : null;
+        toughEnemyAnimation = new Animation<>(0.12f, makeAtlasRowFrames(toughEnemySheet, 4, 4, 0, 4, 6));
+        bossAnimation = new Animation<>(0.16f, makeAtlasRowFrames(bossSheet, 4, 4, 0, 4, 3));
 
         playerStateTime = 0f;
         enemyStateTime = 0f;
@@ -205,6 +215,39 @@ public class Main implements ApplicationListener {
         return frames;
     }
 
+    private TextureRegion[] makeAtlasRowFrames(Texture texture, int cols, int rows, int rowIndex, int frameCount, int fallbackCount) {
+        if (texture.getWidth() % cols == 0 && texture.getHeight() % rows == 0 && rowIndex >= 0 && rowIndex < rows) {
+            TextureRegion[][] grid = TextureRegion.split(texture, texture.getWidth() / cols, texture.getHeight() / rows);
+            TextureRegion[] frames = new TextureRegion[frameCount];
+            for (int i = 0; i < frameCount; i++) {
+                frames[i] = grid[rowIndex][i % cols];
+            }
+            return frames;
+        }
+
+        return makeStrip(texture, fallbackCount);
+    }
+
+    private TextureRegion[] makeFrames(Texture texture, int preferredCount, int fallbackCount) {
+        int side = (int) Math.sqrt(preferredCount);
+
+        // Prefer 4x4/3x3 style atlas extraction for modern sprite sheets.
+        if (side * side == preferredCount && texture.getWidth() % side == 0 && texture.getHeight() % side == 0) {
+            TextureRegion[][] grid = TextureRegion.split(texture, texture.getWidth() / side, texture.getHeight() / side);
+            TextureRegion[] frames = new TextureRegion[preferredCount];
+            int frame = 0;
+            for (int row = 0; row < side; row++) {
+                for (int col = 0; col < side; col++) {
+                    frames[frame++] = grid[row][col];
+                }
+            }
+            return frames;
+        }
+
+        // Fallback for legacy single-row strips.
+        return makeStrip(texture, fallbackCount);
+    }
+
     private Texture createCollectibleTexture() {
         // simple glowing pickup
         Pixmap pixmap = new Pixmap(32, 32, Pixmap.Format.RGBA8888);
@@ -240,7 +283,7 @@ public class Main implements ApplicationListener {
 
         updatePowerShot(delta);
 
-        if (!gameOver) {
+        if (!gameOver && !gameWon) {
             input(delta);
             moveEnemies(delta);
             separateEnemies();
@@ -293,9 +336,13 @@ public class Main implements ApplicationListener {
             font.draw(batch, "GAME OVER - Press R to Restart", 20, Gdx.graphics.getHeight() - 220);
         }
 
+        if (gameWon) {
+            font.draw(batch, "VICTORY - GAME COMPLETE! Press R to Restart", 20, Gdx.graphics.getHeight() - 220);
+        }
+
         batch.end();
 
-        if (gameOver && Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+        if ((gameOver || gameWon) && Gdx.input.isKeyJustPressed(Input.Keys.R)) {
             resetGame();
         }
     }
@@ -350,8 +397,8 @@ public class Main implements ApplicationListener {
 
     private void drawEnemies() {
         TextureRegion normalFrame = enemyFloatAnimation.getKeyFrame(enemyStateTime, true);
-        TextureRegion toughFrame = toughEnemyAnimation.getKeyFrame(0, false);
-        TextureRegion bossFrame = bossAnimation.getKeyFrame(0, false);
+        TextureRegion toughFrame = toughEnemyAnimation.getKeyFrame(enemyStateTime, true);
+        TextureRegion bossFrame = bossAnimation.getKeyFrame(enemyStateTime, true);
 
         for (Enemy enemy : enemies) {
             if (enemy.isDying()) continue;
@@ -362,7 +409,9 @@ public class Main implements ApplicationListener {
             } else if (enemy.isTough()) {
                 frame = toughFrame;
             } else {
-                frame = normalFrame;
+                frame = (demonEnemyAnimation != null && ((int) enemy.getX()) % 2 == 0)
+                        ? demonEnemyAnimation.getKeyFrame(enemyStateTime, true)
+                        : normalFrame;
             }
 
             boolean enemyFacesRight = player.getX() > enemy.getX();
@@ -522,7 +571,7 @@ public class Main implements ApplicationListener {
         }
 
         float speed = enemy.isBoss() ? 3.0f : 2.3f;
-        int damage = enemy.isBoss() ? 2 : 1;
+        int damage = enemy.isBoss() ? 999 : 1;
 
         if (!enemy.isBoss()) {
             projectiles.add(new Projectile(startX, startY, baseDirX * speed, baseDirY * speed, damage, Projectile.ORB));
@@ -588,7 +637,7 @@ public class Main implements ApplicationListener {
             directionY /= length;
         }
 
-        float speed = 3.3f;
+        float speed = 2.31f;
         projectiles.add(new Projectile(startX, startY, directionX * speed, directionY * speed, 999, Projectile.COMET));
     }
 
@@ -678,19 +727,6 @@ public class Main implements ApplicationListener {
             playerStateTime = 0f;
             projectiles.remove(projectileIndex);
             updateWindowTitle();
-            return;
-        }
-
-        for (Enemy enemy : enemies) {
-            if (enemy.isDying()) continue;
-
-            Rectangle enemyHitbox = new Rectangle(enemy.getX(), enemy.getY(), getEnemyWidth(enemy), getEnemyHeight(enemy));
-
-            if (projectileHitbox.overlaps(enemyHitbox)) {
-                killEnemy(enemy, enemy.isBoss() ? 15 : 2);
-                projectiles.remove(projectileIndex);
-                break;
-            }
         }
     }
 
@@ -738,6 +774,7 @@ public class Main implements ApplicationListener {
 
         if (enemy.isBoss()) {
             bossAlive = false;
+            gameWon = true;
         } else {
             enemiesKilled++;
 
@@ -750,6 +787,8 @@ public class Main implements ApplicationListener {
     }
 
     private void processPendingSpawns() {
+        if (bossAlive || gameWon) return;
+
         while (pendingToughSpawns > 0) {
             addToughEnemy();
             pendingToughSpawns--;
@@ -764,7 +803,7 @@ public class Main implements ApplicationListener {
             return;
         }
 
-        if (bossAlive) return;
+        if (bossAlive || gameWon) return;
 
         while (score >= nextDifficultyScore) {
             enemySpeedBoost += 0.10f;
@@ -774,7 +813,7 @@ public class Main implements ApplicationListener {
     }
 
     private void spawnEnemiesOverTime(float delta) {
-        if (bossAlive) return;
+        if (bossAlive || gameWon) return;
 
         enemySpawnTimer -= delta;
 
@@ -808,13 +847,14 @@ public class Main implements ApplicationListener {
     }
 
     private void addBoss() {
+        enemies.removeIf(enemy -> !enemy.isBoss());
         Enemy boss = new Enemy(5.8f, 2f, 0.8f, 0.8f, 120, 3, Enemy.BOSS);
         boss.setOrbCooldown(0.35f);
         enemies.add(boss);
     }
 
     private float getEnemyWidth(Enemy enemy) {
-        if (enemy.isBoss()) return 1.25f;
+        if (enemy.isBoss()) return 1.45f;
         if (enemy.isTough()) return 0.95f;
         return 0.8f;
     }
@@ -857,6 +897,7 @@ public class Main implements ApplicationListener {
         enemySpawnTimer = enemySpawnSeconds;
         collisionWait = 0f;
         gameOver = false;
+        gameWon = false;
         powerShotActive = false;
         powerShotTimer = 0f;
         enemiesCanShoot = true;
@@ -903,6 +944,7 @@ public class Main implements ApplicationListener {
         playerShootSheet.dispose();
         playerDieSheet.dispose();
         enemyFloatSheet.dispose();
+        if (demonEnemySheet != null) demonEnemySheet.dispose();
 
         toughEnemySheet.dispose();
         bossSheet.dispose();

@@ -147,7 +147,7 @@ public class Main implements ApplicationListener {
         playerDieAnimation = new Animation<>(0.15f, makeStrip(playerDieSheet, 5));
         enemyFloatAnimation = new Animation<>(0.12f, makeStrip(enemyFloatSheet, 6));
         toughEnemyAnimation = new Animation<>(0.12f, makeStrip(toughEnemySheet, 6));
-        bossAnimation = new Animation<>(0.16f, makeStrip(bossSheet, 3));
+        bossAnimation = new Animation<>(0.12f, makeStrip(bossSheet, 1));
 
         playerStateTime = 0f;
         enemyStateTime = 0f;
@@ -810,13 +810,13 @@ public class Main implements ApplicationListener {
     }
 
     private float getEnemyWidth(Enemy enemy) {
-        if (enemy.isBoss()) return 1.45f;
+        if (enemy.isBoss()) return 2.2f;
         if (enemy.isTough()) return 0.95f;
         return 0.8f;
     }
 
     private float getEnemyHeight(Enemy enemy) {
-        if (enemy.isBoss()) return 1.45f;
+        if (enemy.isBoss()) return 2.2f;
         if (enemy.isTough()) return 1.15f;
         return 1.0f;
     }

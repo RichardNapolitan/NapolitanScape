@@ -5,6 +5,7 @@ public class Enemy {
     public static final String NORMAL = "NORMAL";
     public static final String TOUGH = "TOUGH";
     public static final String BOSS = "BOSS";
+    public static final String DEMON = "DEMON";
 
     private float x;
     private float y;
@@ -78,6 +79,10 @@ public class Enemy {
 
     public boolean isTough() {
         return type.equals(TOUGH);
+    }
+
+    public boolean isDemon() {
+        return type.equals(DEMON);
     }
 
     @Override

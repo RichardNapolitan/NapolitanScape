@@ -206,6 +206,27 @@ public class Main implements ApplicationListener {
         return frames;
     }
 
+    private TextureRegion[] makeFrames(Texture texture, int preferredCount, int fallbackCount) {
+        if (texture.getWidth() % preferredCount == 0) {
+            return makeStrip(texture, preferredCount);
+        }
+
+        int side = (int) Math.sqrt(preferredCount);
+        if (side * side == preferredCount && texture.getWidth() % side == 0 && texture.getHeight() % side == 0) {
+            TextureRegion[][] grid = TextureRegion.split(texture, texture.getWidth() / side, texture.getHeight() / side);
+            TextureRegion[] frames = new TextureRegion[preferredCount];
+            int frame = 0;
+            for (int row = 0; row < side; row++) {
+                for (int col = 0; col < side; col++) {
+                    frames[frame++] = grid[row][col];
+                }
+            }
+            return frames;
+        }
+
+        return makeStrip(texture, fallbackCount);
+    }
+
     private Texture createCollectibleTexture() {
         // simple glowing pickup
         Pixmap pixmap = new Pixmap(32, 32, Pixmap.Format.RGBA8888);
@@ -355,7 +376,7 @@ public class Main implements ApplicationListener {
 
     private void drawEnemies() {
         TextureRegion normalFrame = enemyFloatAnimation.getKeyFrame(enemyStateTime, true);
-        TextureRegion toughFrame = toughEnemyAnimation.getKeyFrame(0, false);
+*-         TextureRegion toughFrame = toughEnemyAnimation.getKeyFrame(0, false);
         TextureRegion bossFrame = bossAnimation.getKeyFrame(enemyStateTime, true);
 
         for (Enemy enemy : enemies) {

@@ -2,6 +2,10 @@ package io.github.Naoilitanscape;
 
 public class Enemy {
 
+    public static final String NORMAL = "NORMAL";
+    public static final String TOUGH = "TOUGH";
+    public static final String BOSS = "BOSS";
+
     private float x;
     private float y;
     private float speedX;
@@ -11,14 +15,20 @@ public class Enemy {
     private boolean dying;
     private float deathTimer;
     private float orbCooldown;
+    private String type;
 
     public Enemy(float x, float y, float speedX, float speedY, int health, int damage) {
+        this(x, y, speedX, speedY, health, damage, NORMAL);
+    }
+
+    public Enemy(float x, float y, float speedX, float speedY, int health, int damage, String type) {
         this.x = x;
         this.y = y;
         this.speedX = speedX;
         this.speedY = speedY;
         this.health = health;
         this.damage = damage;
+        this.type = type;
         this.dying = false;
         this.deathTimer = 0f;
         this.orbCooldown = 2f;
@@ -51,12 +61,23 @@ public class Enemy {
     public float getOrbCooldown() { return orbCooldown; }
     public void setOrbCooldown(float orbCooldown) { this.orbCooldown = orbCooldown; }
 
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+
     public void takeDamage(int amount) {
         health -= amount;
     }
 
     public boolean isDefeated() {
         return health <= 0;
+    }
+
+    public boolean isBoss() {
+        return type.equals(BOSS);
+    }
+
+    public boolean isTough() {
+        return type.equals(TOUGH);
     }
 
     @Override
@@ -70,6 +91,7 @@ public class Enemy {
                 ", damage=" + damage +
                 ", dying=" + dying +
                 ", orbCooldown=" + orbCooldown +
+                ", type='" + type + '\'' +
                 '}';
     }
 }

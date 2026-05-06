@@ -2,6 +2,7 @@ package io.github.Naoilitanscape;
 
 public class Projectile {
 
+    // I use these strings to tell which kind of projectile it is.
     public static final String PLAYER = "PLAYER";
     public static final String ORB = "ORB";
     public static final String COMET = "COMET";
@@ -11,7 +12,6 @@ public class Projectile {
     private float speedX;
     private float speedY;
     private int damage;
-    private boolean active;
     private String type;
 
     public Projectile(float x, float y, float speedX, int damage) {
@@ -25,40 +25,65 @@ public class Projectile {
         this.speedY = speedY;
         this.damage = damage;
         this.type = type;
-        this.active = true;
     }
 
-    public float getX() { return x; }
-    public void setX(float x) { this.x = x; }
+    public float getX() {
+        return x;
+    }
 
-    public float getY() { return y; }
-    public void setY(float y) { this.y = y; }
+    public void setX(float x) {
+        this.x = x;
+    }
 
-    public float getSpeedX() { return speedX; }
-    public void setSpeedX(float speedX) { this.speedX = speedX; }
+    public float getY() {
+        return y;
+    }
 
-    public float getSpeedY() { return speedY; }
-    public void setSpeedY(float speedY) { this.speedY = speedY; }
+    public void setY(float y) {
+        this.y = y;
+    }
 
-    public int getDamage() { return damage; }
-    public void setDamage(int damage) { this.damage = damage; }
+    public float getSpeedX() {
+        return speedX;
+    }
 
-    public boolean isActive() { return active; }
-    public void setActive(boolean active) { this.active = active; }
+    public void setSpeedX(float speedX) {
+        this.speedX = speedX;
+    }
 
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
+    public float getSpeedY() {
+        return speedY;
+    }
+
+    public void setSpeedY(float speedY) {
+        this.speedY = speedY;
+    }
+
+    public int getDamage() {
+        return damage;
+    }
+
+    public void setDamage(int damage) {
+        this.damage = damage;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
 
     @Override
     public String toString() {
         return "Projectile{" +
-                "x=" + x +
-                ", y=" + y +
-                ", speedX=" + speedX +
-                ", speedY=" + speedY +
-                ", damage=" + damage +
-                ", active=" + active +
-                ", type='" + type + '\'' +
-                '}';
+            "x=" + x +
+            ", y=" + y +
+            ", speedX=" + speedX +
+            ", speedY=" + speedY +
+            ", damage=" + damage +
+            ", type='" + type + '\'' +
+            '}';
     }
 }

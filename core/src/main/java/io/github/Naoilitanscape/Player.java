@@ -25,6 +25,7 @@ public class Player {
         this.moving = false;
     }
 
+    // This checks the arrow keys and moves the player around the screen.
     public void move(float delta, FitViewport viewport) {
         moving = false;
 
@@ -51,6 +52,7 @@ public class Player {
         y = MathUtils.clamp(y, 0, viewport.getWorldHeight() - height);
     }
 
+    // Used when the player gets hit or the game restarts.
     public void reset(float x, float y) {
         this.x = x;
         this.y = y;
@@ -58,37 +60,72 @@ public class Player {
         this.moving = false;
     }
 
-    public float getX() { return x; }
-    public void setX(float x) { this.x = x; }
+    public float getX() {
+        return x;
+    }
 
-    public float getY() { return y; }
-    public void setY(float y) { this.y = y; }
+    public void setX(float x) {
+        this.x = x;
+    }
 
-    public float getWidth() { return width; }
-    public void setWidth(float width) { this.width = width; }
+    public float getY() {
+        return y;
+    }
 
-    public float getHeight() { return height; }
-    public void setHeight(float height) { this.height = height; }
+    public void setY(float y) {
+        this.y = y;
+    }
 
-    public float getSpeed() { return speed; }
-    public void setSpeed(float speed) { this.speed = speed; }
+    public float getWidth() {
+        return width;
+    }
 
-    public boolean isFacingRight() { return facingRight; }
-    public void setFacingRight(boolean facingRight) { this.facingRight = facingRight; }
+    public void setWidth(float width) {
+        this.width = width;
+    }
 
-    public boolean isMoving() { return moving; }
-    public void setMoving(boolean moving) { this.moving = moving; }
+    public float getHeight() {
+        return height;
+    }
+
+    public void setHeight(float height) {
+        this.height = height;
+    }
+
+    public float getSpeed() {
+        return speed;
+    }
+
+    public void setSpeed(float speed) {
+        this.speed = speed;
+    }
+
+    public boolean isFacingRight() {
+        return facingRight;
+    }
+
+    public void setFacingRight(boolean facingRight) {
+        this.facingRight = facingRight;
+    }
+
+    public boolean isMoving() {
+        return moving;
+    }
+
+    public void setMoving(boolean moving) {
+        this.moving = moving;
+    }
 
     @Override
     public String toString() {
         return "Player{" +
-                "x=" + x +
-                ", y=" + y +
-                ", width=" + width +
-                ", height=" + height +
-                ", speed=" + speed +
-                ", facingRight=" + facingRight +
-                ", moving=" + moving +
-                '}';
+            "x=" + x +
+            ", y=" + y +
+            ", width=" + width +
+            ", height=" + height +
+            ", speed=" + speed +
+            ", facingRight=" + facingRight +
+            ", moving=" + moving +
+            '}';
     }
 }

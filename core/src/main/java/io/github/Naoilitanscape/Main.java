@@ -21,7 +21,7 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 
 import java.util.ArrayList;
 
-/** Main game class */
+// This is where most of the game happens.
 public class Main implements ApplicationListener {
 
     // textures
@@ -53,9 +53,11 @@ public class Main implements ApplicationListener {
     private Animation<TextureRegion> playerWalkAnimation;
     private Animation<TextureRegion> playerShootAnimation;
     private Animation<TextureRegion> playerDieAnimation;
-    private Animation<TextureRegion> enemyFloatAnimation;
-    private Animation<TextureRegion> toughEnemyAnimation;
-    private Animation<TextureRegion> bossAnimation;
+
+    // Enemy sprite sheets are 4 rows by 4 columns.
+    private Animation<TextureRegion>[] enemyFloatDirectionalAnimations;
+    private Animation<TextureRegion>[] toughEnemyDirectionalAnimations;
+    private Animation<TextureRegion>[] bossDirectionalAnimations;
 
     private float playerStateTime;
     private float enemyStateTime;
@@ -104,24 +106,25 @@ public class Main implements ApplicationListener {
     private int nextDifficultyScore;
     private float collisionWait;
     private boolean gameOver;
+    private boolean gameWon;
 
     @Override
     public void create() {
-        // load images
+        // Load all of my images and sounds.
         backgroundImage = new Texture("background-space.png");
-        playerWalkSheet = new Texture("player-walk-clean-strip.png");
-        playerShootSheet = new Texture("player-shoot-clean-strip.png");
-        playerDieSheet = new Texture("player-die-clean-strip.png");
-        enemyFloatSheet = new Texture("enemy-float-clean-strip.png");
+        playerWalkSheet = new Texture("Player_walk.png");
+        playerShootSheet = new Texture("Player_shoot.png");
+        playerDieSheet = new Texture("Player_die.png");
+        enemyFloatSheet = new Texture("Enemy_float.png");
         toughEnemySheet = new Texture("Enemy_Tougher.png");
         bossSheet = new Texture("Boss.png");
-        laserImage = new Texture("Laser-shot.png");
-        laserPowerShotImage = new Texture("laser_powershot.png");
-        enemyOrbImage = new Texture("enemy-orb-projectile.png");
+        laserImage = new Texture("Laser_shot.png");
+        laserPowerShotImage = new Texture("Laser_powershot.png");
+        enemyOrbImage = new Texture("enemy_orb.png");
         cometImage = new Texture("comet.png");
         collectibleImage = createCollectibleTexture();
 
-        // keep pixel art sharp
+        // This makes the pixel art stay crisp instead of blurry.
         setNearest(backgroundImage);
         setNearest(playerWalkSheet);
         setNearest(playerShootSheet);
@@ -140,13 +143,15 @@ public class Main implements ApplicationListener {
         batch = new SpriteBatch();
         viewport = new FitViewport(8, 5);
 
-        // animation strips
-        playerWalkAnimation = new Animation<>(0.10f, makeStrip(playerWalkSheet, 5));
+        // Set up the player animations.
+        playerWalkAnimation = new Animation<>(0.10f, makeAtlasRowFrames(playerWalkSheet, 4, 4, 0, 4, 5));
         playerShootAnimation = new Animation<>(0.08f, makeStrip(playerShootSheet, 4));
         playerDieAnimation = new Animation<>(0.15f, makeStrip(playerDieSheet, 5));
-        enemyFloatAnimation = new Animation<>(0.12f, makeStrip(enemyFloatSheet, 6));
-        toughEnemyAnimation = new Animation<>(0.12f, makeStrip(toughEnemySheet, 6));
-        bossAnimation = new Animation<>(0.12f, makeStrip(bossSheet, 6));
+
+        // Set up the enemy animations.
+        enemyFloatDirectionalAnimations = makeDirectionalAnimations(enemyFloatSheet, 4, 4, 0.12f, 4);
+        toughEnemyDirectionalAnimations = makeSameAnimationForAllDirections(toughEnemySheet, 4, 4, 0, 0.12f, 4);
+        bossDirectionalAnimations = makeDirectionalAnimations(bossSheet, 4, 4, 0.16f, 4);
 
         playerStateTime = 0f;
         enemyStateTime = 0f;
@@ -158,31 +163,30 @@ public class Main implements ApplicationListener {
         backgroundMusic.setVolume(0.25f);
         backgroundMusic.play();
 
-        laserSound = Gdx.audio.newSound(Gdx.files.internal("laser-shot.mp3"));
+        laserSound = Gdx.audio.newSound(Gdx.files.internal("laser_shot.mp3"));
 
         // UI
         font = new BitmapFont();
         font.setColor(Color.WHITE);
         hudMatrix = new Matrix4();
 
-        // background
+        // Make the background match the game world.
         background.setSize(viewport.getWorldWidth(), viewport.getWorldHeight());
         background.setPosition(0, 0);
 
-        // player
+        // Player starts near the left side.
         player = new Player(0.5f, 2f, 0.75f, 0.95f, 3.5f);
 
-        // projectile sizes
+        // Sizes are in world units, not pixels.
         playerProjectileWidth = 0.35f;
         playerProjectileHeight = 0.15f;
         enemyOrbSize = 0.45f;
         cometWidth = 0.7f;
         cometHeight = 0.4f;
 
-        // collectible
+        // The collectible is the power shot pickup.
         collectible.setSize(0.35f, 0.35f);
 
-        // lists
         enemies = new ArrayList<>();
         projectiles = new ArrayList<>();
 
@@ -193,6 +197,7 @@ public class Main implements ApplicationListener {
         texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
     }
 
+    // Cuts a normal left-to-right sprite strip into frames.
     private TextureRegion[] makeStrip(Texture texture, int frameCount) {
         TextureRegion[] frames = new TextureRegion[frameCount];
         int frameWidth = texture.getWidth() / frameCount;
@@ -205,8 +210,88 @@ public class Main implements ApplicationListener {
         return frames;
     }
 
+    // Cuts one row out of a bigger sprite sheet.
+    private TextureRegion[] makeAtlasRowFrames(Texture texture, int cols, int rows, int rowIndex, int frameCount, int fallbackCount) {
+        if (texture.getWidth() % cols == 0 && texture.getHeight() % rows == 0 && rowIndex >= 0 && rowIndex < rows) {
+            TextureRegion[][] grid = TextureRegion.split(texture, texture.getWidth() / cols, texture.getHeight() / rows);
+            TextureRegion[] frames = new TextureRegion[frameCount];
+
+            for (int i = 0; i < frameCount; i++) {
+                frames[i] = grid[rowIndex][i % cols];
+            }
+
+            return frames;
+        }
+
+        return makeStrip(texture, fallbackCount);
+    }
+
+    // Makes one animation for each direction row on a sprite sheet.
+    @SuppressWarnings("unchecked")
+    private Animation<TextureRegion>[] makeDirectionalAnimations(Texture texture, int cols, int rows, float frameDuration, int fallbackCount) {
+        Animation<TextureRegion>[] animations = (Animation<TextureRegion>[]) new Animation[rows];
+
+        if (texture.getWidth() % cols == 0 && texture.getHeight() % rows == 0) {
+            for (int row = 0; row < rows; row++) {
+                animations[row] = new Animation<>(frameDuration, makeAtlasRowFrames(texture, cols, rows, row, cols, fallbackCount));
+            }
+        } else {
+            TextureRegion[] stripFrames = makeStrip(texture, fallbackCount);
+
+            for (int row = 0; row < rows; row++) {
+                animations[row] = new Animation<>(frameDuration, stripFrames);
+            }
+        }
+
+        return animations;
+    }
+
+    // Tough enemy looked best using the first row, so I reuse that row.
+    @SuppressWarnings("unchecked")
+    private Animation<TextureRegion>[] makeSameAnimationForAllDirections(Texture texture, int cols, int rows, int rowIndex, float frameDuration, int fallbackCount) {
+        Animation<TextureRegion>[] animations = (Animation<TextureRegion>[]) new Animation[rows];
+        Animation<TextureRegion> animation = new Animation<>(frameDuration, makeAtlasRowFrames(texture, cols, rows, rowIndex, cols, fallbackCount));
+
+        for (int row = 0; row < rows; row++) {
+            animations[row] = animation;
+        }
+
+        return animations;
+    }
+
+
+    // Pick which row of the enemy sheet should face the player.
+    private int getEnemyDirectionRow(Enemy enemy) {
+        float dx = player.getX() - enemy.getX();
+        float dy = player.getY() - enemy.getY();
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+            if (dx >= 0) {
+                return 2;
+            } else {
+                return 3;
+            }
+        }
+
+        if (dy >= 0) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    private TextureRegion getDirectionalEnemyFrame(Animation<TextureRegion>[] animations, Enemy enemy) {
+        if (animations == null || animations.length == 0) {
+            return null;
+        }
+
+        int row = getEnemyDirectionRow(enemy);
+        row = MathUtils.clamp(row, 0, animations.length - 1);
+        return animations[row].getKeyFrame(enemyStateTime, true);
+    }
+
+    // This pickup is made in code so I did not need another image file.
     private Texture createCollectibleTexture() {
-        // simple glowing pickup
         Pixmap pixmap = new Pixmap(32, 32, Pixmap.Format.RGBA8888);
         pixmap.setColor(Color.CYAN);
         pixmap.fillCircle(16, 16, 14);
@@ -240,7 +325,7 @@ public class Main implements ApplicationListener {
 
         updatePowerShot(delta);
 
-        if (!gameOver) {
+        if (!gameOver && !gameWon) {
             input(delta);
             moveEnemies(delta);
             separateEnemies();
@@ -256,7 +341,6 @@ public class Main implements ApplicationListener {
 
         ScreenUtils.clear(Color.BLACK);
 
-        // draw world
         viewport.apply();
         batch.setProjectionMatrix(viewport.getCamera().combined);
 
@@ -268,7 +352,6 @@ public class Main implements ApplicationListener {
         drawPlayer();
         batch.end();
 
-        // draw HUD
         batch.setProjectionMatrix(hudMatrix);
         batch.begin();
         font.draw(batch, "Score: " + score, 20, Gdx.graphics.getHeight() - 20);
@@ -286,20 +369,29 @@ public class Main implements ApplicationListener {
         }
 
         if (bossAlive) {
-            font.draw(batch, bossPhaseTwo ? "BOSS PHASE 2" : "BOSS FIGHT", 20, Gdx.graphics.getHeight() - 195);
+            if (bossPhaseTwo) {
+                font.draw(batch, "BOSS PHASE 2", 20, Gdx.graphics.getHeight() - 195);
+            } else {
+                font.draw(batch, "BOSS FIGHT", 20, Gdx.graphics.getHeight() - 195);
+            }
         }
 
         if (gameOver) {
             font.draw(batch, "GAME OVER - Press R to Restart", 20, Gdx.graphics.getHeight() - 220);
         }
 
+        if (gameWon) {
+            font.draw(batch, "VICTORY - GAME COMPLETE! Press R to Restart", 20, Gdx.graphics.getHeight() - 220);
+        }
+
         batch.end();
 
-        if (gameOver && Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+        if ((gameOver || gameWon) && Gdx.input.isKeyJustPressed(Input.Keys.R)) {
             resetGame();
         }
     }
 
+    // Counts down the power shot timer.
     private void updatePowerShot(float delta) {
         if (powerShotActive) {
             powerShotTimer -= delta;
@@ -312,6 +404,7 @@ public class Main implements ApplicationListener {
         }
     }
 
+    // Moves the player and checks for shooting.
     private void input(float delta) {
         player.move(delta, viewport);
 
@@ -320,11 +413,25 @@ public class Main implements ApplicationListener {
         }
     }
 
+    // Player laser shot.
     private void shoot() {
-        float shotSpeed = player.isFacingRight() ? 7f : -7f;
-        float shotX = player.isFacingRight() ? player.getX() + player.getWidth() : player.getX() - playerProjectileWidth;
+        float shotSpeed;
+        float shotX;
+
+        if (player.isFacingRight()) {
+            shotSpeed = 7f;
+            shotX = player.getX() + player.getWidth();
+        } else {
+            shotSpeed = -7f;
+            shotX = player.getX() - playerProjectileWidth;
+        }
+
         float shotY = player.getY() + 0.42f;
-        int damage = powerShotActive ? 2 : 1;
+        int damage = 1;
+
+        if (powerShotActive) {
+            damage = 2;
+        }
 
         projectiles.add(new Projectile(shotX, shotY, shotSpeed, 0f, damage, Projectile.PLAYER));
 
@@ -334,6 +441,7 @@ public class Main implements ApplicationListener {
         playerStateTime = 0f;
     }
 
+    // Chooses the right player frame to draw.
     private void drawPlayer() {
         TextureRegion frame;
 
@@ -348,32 +456,37 @@ public class Main implements ApplicationListener {
         drawFacing(frame, player.getX(), player.getY(), player.getWidth(), player.getHeight(), player.isFacingRight());
     }
 
+    // Draws enemies based on their type.
     private void drawEnemies() {
-        TextureRegion normalFrame = enemyFloatAnimation.getKeyFrame(enemyStateTime, true);
-        TextureRegion toughFrame = toughEnemyAnimation.getKeyFrame(0, false);
-        TextureRegion bossFrame = bossAnimation.getKeyFrame(0, false);
-
         for (Enemy enemy : enemies) {
             if (enemy.isDying()) continue;
 
             TextureRegion frame;
+
             if (enemy.isBoss()) {
-                frame = bossFrame;
+                frame = getDirectionalEnemyFrame(bossDirectionalAnimations, enemy);
             } else if (enemy.isTough()) {
-                frame = toughFrame;
+                frame = getDirectionalEnemyFrame(toughEnemyDirectionalAnimations, enemy);
             } else {
-                frame = normalFrame;
+                frame = getDirectionalEnemyFrame(enemyFloatDirectionalAnimations, enemy);
             }
 
-            boolean enemyFacesRight = player.getX() > enemy.getX();
-            drawFacing(frame, enemy.getX(), enemy.getY(), getEnemyWidth(enemy), getEnemyHeight(enemy), enemyFacesRight);
+            if (frame != null) {
+                batch.draw(frame, enemy.getX(), enemy.getY(), getEnemyWidth(enemy), getEnemyHeight(enemy));
+            }
         }
     }
 
+    // Draws all active projectiles.
     private void drawProjectiles() {
         for (Projectile projectile : projectiles) {
             if (projectile.getType().equals(Projectile.PLAYER)) {
-                Texture laserTexture = projectile.getDamage() > 1 ? laserPowerShotImage : laserImage;
+                Texture laserTexture = laserImage;
+
+                if (projectile.getDamage() > 1) {
+                    laserTexture = laserPowerShotImage;
+                }
+
                 drawTextureProjectile(laserTexture, projectile, playerProjectileWidth, playerProjectileHeight);
             } else if (projectile.getType().equals(Projectile.ORB)) {
                 batch.draw(enemyOrbImage, projectile.getX(), projectile.getY(), enemyOrbSize, enemyOrbSize);
@@ -383,6 +496,7 @@ public class Main implements ApplicationListener {
         }
     }
 
+    // Used for laser and comet pictures so they can flip left/right.
     private void drawTextureProjectile(Texture texture, Projectile projectile, float width, float height) {
         if (projectile.getSpeedX() < 0) {
             batch.draw(texture, projectile.getX() + width, projectile.getY(), -width, height);
@@ -391,6 +505,7 @@ public class Main implements ApplicationListener {
         }
     }
 
+    // Draws a texture region facing either right or left.
     private void drawFacing(TextureRegion frame, float x, float y, float width, float height, boolean facingRight) {
         if (facingRight) {
             batch.draw(frame, x, y, width, height);
@@ -399,6 +514,7 @@ public class Main implements ApplicationListener {
         }
     }
 
+    // Enemies slowly move toward the player.
     private void moveEnemies(float delta) {
         for (Enemy enemy : enemies) {
             if (enemy.isDying()) continue;
@@ -419,7 +535,11 @@ public class Main implements ApplicationListener {
             }
 
             if (enemy.isBoss()) {
-                baseSpeed = bossPhaseTwo ? 0.50f : 0.35f;
+                if (bossPhaseTwo) {
+                    baseSpeed = 0.50f;
+                } else {
+                    baseSpeed = 0.35f;
+                }
             }
 
             enemy.setSpeedX(directionX * baseSpeed * enemySpeedBoost);
@@ -433,6 +553,7 @@ public class Main implements ApplicationListener {
         }
     }
 
+    // Stops enemies from sitting right on top of each other.
     private void separateEnemies() {
         float minDistance = 0.75f;
 
@@ -461,6 +582,7 @@ public class Main implements ApplicationListener {
         }
     }
 
+    // Removes dead enemies after a short delay.
     private void updateEnemyDeaths(float delta) {
         float deathLength = 0.35f;
 
@@ -477,37 +599,76 @@ public class Main implements ApplicationListener {
         }
     }
 
+    // Handles normal enemy shots and boss shots.
     private void updateEnemyOrbShooting(float delta) {
-        if (!enemiesCanShoot || powerShotActive) return;
-
         for (Enemy enemy : enemies) {
             if (enemy.isDying()) continue;
 
             updateBossPhase(enemy);
 
+            if (enemy.isBoss()) {
+                updateBossOrbShooting(enemy, delta);
+                continue;
+            }
+
+            // Tough enemies are melee only.
+            if (enemy.isTough()) continue;
+
+            if (!enemiesCanShoot || powerShotActive) continue;
+
             enemy.setOrbCooldown(enemy.getOrbCooldown() - delta);
 
             if (enemy.getOrbCooldown() <= 0) {
                 fireEnemyOrb(enemy);
-
-                if (enemy.isBoss()) {
-                    enemy.setOrbCooldown(bossPhaseTwo ? MathUtils.random(0.15f, 0.35f) : MathUtils.random(0.35f, 0.65f));
-                } else if (enemy.isTough()) {
-                    enemy.setOrbCooldown(MathUtils.random(2.0f, 3.0f));
-                } else {
-                    enemy.setOrbCooldown(MathUtils.random(3.0f, 4.5f));
-                }
+                enemy.setOrbCooldown(MathUtils.random(3.0f, 4.5f));
             }
         }
     }
 
-    private void updateBossPhase(Enemy enemy) {
-        if (enemy.isBoss() && enemy.getHealth() <= 60 && !bossPhaseTwo) {
-            bossPhaseTwo = true;
-            enemy.setOrbCooldown(0.15f);
+    // Boss attacks in groups so the player has time to dodge.
+    private void updateBossOrbShooting(Enemy boss, float delta) {
+        boss.setOrbCooldown(boss.getOrbCooldown() - delta);
+
+        if (boss.getOrbCooldown() > 0) {
+            return;
+        }
+
+        if (boss.getOrbVolleyShotsLeft() <= 0) {
+            if (bossPhaseTwo) {
+                boss.setOrbVolleyShotsLeft(MathUtils.random(2, 3));
+            } else {
+                boss.setOrbVolleyShotsLeft(MathUtils.random(3, 4));
+            }
+        }
+
+        fireEnemyOrb(boss);
+        boss.setOrbVolleyShotsLeft(boss.getOrbVolleyShotsLeft() - 1);
+
+        if (boss.getOrbVolleyShotsLeft() > 0) {
+            if (bossPhaseTwo) {
+                boss.setOrbCooldown(0.50f);
+            } else {
+                boss.setOrbCooldown(0.42f);
+            }
+        } else {
+            if (bossPhaseTwo) {
+                boss.setOrbCooldown(MathUtils.random(2.1f, 3.0f));
+            } else {
+                boss.setOrbCooldown(MathUtils.random(2.0f, 2.8f));
+            }
         }
     }
 
+    // Phase two starts once the boss is halfway defeated.
+    private void updateBossPhase(Enemy enemy) {
+        if (enemy.isBoss() && enemy.getHealth() <= 60 && !bossPhaseTwo) {
+            bossPhaseTwo = true;
+            enemy.setOrbCooldown(1.0f);
+            enemy.setOrbVolleyShotsLeft(0);
+        }
+    }
+
+    // Makes enemy orbs aim toward the player.
     private void fireEnemyOrb(Enemy enemy) {
         float startX = enemy.getX() + getEnemyWidth(enemy) / 2f;
         float startY = enemy.getY() + getEnemyHeight(enemy) / 2f;
@@ -521,27 +682,47 @@ public class Main implements ApplicationListener {
             baseDirY /= length;
         }
 
-        float speed = enemy.isBoss() ? 3.0f : 2.3f;
-        int damage = enemy.isBoss() ? 2 : 1;
+        float speed = 2.3f;
+        int damage = 1;
+
+        if (enemy.isBoss()) {
+            speed = 2.8f;
+        }
 
         if (!enemy.isBoss()) {
-            projectiles.add(new Projectile(startX, startY, baseDirX * speed, baseDirY * speed, damage, Projectile.ORB));
+            addEnemyOrbProjectile(startX, startY, baseDirX, baseDirY, speed, damage);
             return;
         }
 
-        // boss shoots a spread pattern
-        float spread = bossPhaseTwo ? 0.45f : 0.25f;
-
-        projectiles.add(new Projectile(startX, startY, baseDirX * speed, baseDirY * speed, damage, Projectile.ORB));
-        projectiles.add(new Projectile(startX, startY, (baseDirX + spread) * speed, (baseDirY + spread) * speed, damage, Projectile.ORB));
-        projectiles.add(new Projectile(startX, startY, (baseDirX - spread) * speed, (baseDirY - spread) * speed, damage, Projectile.ORB));
+        float spread = 0.24f;
 
         if (bossPhaseTwo) {
-            projectiles.add(new Projectile(startX, startY, (baseDirX + spread) * speed, (baseDirY - spread) * speed, damage, Projectile.ORB));
-            projectiles.add(new Projectile(startX, startY, (baseDirX - spread) * speed, (baseDirY + spread) * speed, damage, Projectile.ORB));
+            spread = 0.42f;
+        }
+
+        addEnemyOrbProjectile(startX, startY, baseDirX, baseDirY, speed, damage);
+        addEnemyOrbProjectile(startX, startY, baseDirX + spread, baseDirY + spread, speed, damage);
+        addEnemyOrbProjectile(startX, startY, baseDirX - spread, baseDirY - spread, speed, damage);
+
+        if (bossPhaseTwo) {
+            addEnemyOrbProjectile(startX, startY, baseDirX + spread, baseDirY - spread, speed, damage);
+            addEnemyOrbProjectile(startX, startY, baseDirX - spread, baseDirY + spread, speed, damage);
         }
     }
 
+    // This keeps diagonal orb shots from moving faster than straight shots.
+    private void addEnemyOrbProjectile(float startX, float startY, float directionX, float directionY, float speed, int damage) {
+        float length = (float) Math.sqrt(directionX * directionX + directionY * directionY);
+
+        if (length != 0) {
+            directionX /= length;
+            directionY /= length;
+        }
+
+        projectiles.add(new Projectile(startX, startY, directionX * speed, directionY * speed, damage, Projectile.ORB));
+    }
+
+    // Counts down until the next comet wave.
     private void updateCometSystem(float delta) {
         cometTimer -= delta;
 
@@ -551,12 +732,14 @@ public class Main implements ApplicationListener {
         }
     }
 
+    // Spawns a few comets at once.
     private void spawnCometWave() {
         for (int i = 0; i < 4; i++) {
             spawnOneComet();
         }
     }
 
+    // Starts a comet from a random side of the screen.
     private void spawnOneComet() {
         int edge = MathUtils.random(0, 3);
         float startX;
@@ -588,10 +771,11 @@ public class Main implements ApplicationListener {
             directionY /= length;
         }
 
-        float speed = 3.3f;
+        float speed = 2.31f;
         projectiles.add(new Projectile(startX, startY, directionX * speed, directionY * speed, 999, Projectile.COMET));
     }
 
+    // Moves projectiles and deletes them when they leave the screen.
     private void moveProjectiles(float delta) {
         for (int i = projectiles.size() - 1; i >= 0; i--) {
             Projectile projectile = projectiles.get(i);
@@ -600,14 +784,15 @@ public class Main implements ApplicationListener {
             projectile.setY(projectile.getY() + projectile.getSpeedY() * delta);
 
             if (projectile.getX() > viewport.getWorldWidth() + 1f ||
-                    projectile.getX() < -1f ||
-                    projectile.getY() > viewport.getWorldHeight() + 1f ||
-                    projectile.getY() < -1f) {
+                projectile.getX() < -1f ||
+                projectile.getY() > viewport.getWorldHeight() + 1f ||
+                projectile.getY() < -1f) {
                 projectiles.remove(i);
             }
         }
     }
 
+    // Checks everything that can hit something.
     private void checkCollisions() {
         Rectangle playerHitbox = new Rectangle(player.getX(), player.getY(), player.getWidth(), player.getHeight());
         Rectangle collectibleHitbox = collectible.getBoundingRectangle();
@@ -625,6 +810,7 @@ public class Main implements ApplicationListener {
         checkProjectileHits(playerHitbox);
     }
 
+    // Player touching an enemy hurts the player.
     private void checkEnemyBodyHits(Rectangle playerHitbox) {
         for (Enemy enemy : enemies) {
             if (enemy.isDying()) continue;
@@ -632,33 +818,22 @@ public class Main implements ApplicationListener {
             Rectangle enemyHitbox = new Rectangle(enemy.getX(), enemy.getY(), getEnemyWidth(enemy), getEnemyHeight(enemy));
 
             if (collisionWait <= 0 && playerHitbox.overlaps(enemyHitbox)) {
-                lives -= enemy.getDamage();
-                player.reset(0.5f, 2f);
-                collisionWait = 1f;
-                updateWindowTitle();
-
-                if (lives <= 0) {
-                    gameOver = true;
-                    playerStateTime = 0f;
-                }
-
+                damagePlayer(enemy.getDamage());
                 break;
             }
         }
     }
 
+    // Checks if any projectile hit the player or an enemy.
     private void checkProjectileHits(Rectangle playerHitbox) {
         for (int i = projectiles.size() - 1; i >= 0; i--) {
             Projectile projectile = projectiles.get(i);
             Rectangle projectileHitbox = getProjectileHitbox(projectile);
 
             if (projectile.getType().equals(Projectile.ORB)) {
-                if (playerHitbox.overlaps(projectileHitbox)) {
-                    lives = 0;
-                    gameOver = true;
-                    playerStateTime = 0f;
+                if (collisionWait <= 0 && playerHitbox.overlaps(projectileHitbox)) {
+                    damagePlayer(projectile.getDamage());
                     projectiles.remove(i);
-                    updateWindowTitle();
                     return;
                 }
             } else if (projectile.getType().equals(Projectile.COMET)) {
@@ -669,6 +844,20 @@ public class Main implements ApplicationListener {
         }
     }
 
+    // All player damage goes through here.
+    private void damagePlayer(int damage) {
+        lives -= damage;
+        player.reset(0.5f, 2f);
+        collisionWait = 1f;
+        updateWindowTitle();
+
+        if (lives <= 0) {
+            gameOver = true;
+            playerStateTime = 0f;
+        }
+    }
+
+    // Comets are still instant game over.
     private void handleCometHit(int projectileIndex, Rectangle projectileHitbox) {
         Rectangle playerHitbox = new Rectangle(player.getX(), player.getY(), player.getWidth(), player.getHeight());
 
@@ -678,22 +867,10 @@ public class Main implements ApplicationListener {
             playerStateTime = 0f;
             projectiles.remove(projectileIndex);
             updateWindowTitle();
-            return;
-        }
-
-        for (Enemy enemy : enemies) {
-            if (enemy.isDying()) continue;
-
-            Rectangle enemyHitbox = new Rectangle(enemy.getX(), enemy.getY(), getEnemyWidth(enemy), getEnemyHeight(enemy));
-
-            if (projectileHitbox.overlaps(enemyHitbox)) {
-                killEnemy(enemy, enemy.isBoss() ? 15 : 2);
-                projectiles.remove(projectileIndex);
-                break;
-            }
         }
     }
 
+    // Checks the player's laser against enemies.
     private void handlePlayerShotHit(int projectileIndex, Rectangle projectileHitbox, Projectile projectile) {
         for (Enemy enemy : enemies) {
             if (enemy.isDying()) continue;
@@ -706,7 +883,11 @@ public class Main implements ApplicationListener {
                 projectiles.remove(projectileIndex);
 
                 if (enemy.isDefeated()) {
-                    killEnemy(enemy, enemy.isBoss() ? 15 : 2);
+                    if (enemy.isBoss()) {
+                        killEnemy(enemy, 15);
+                    } else {
+                        killEnemy(enemy, 2);
+                    }
                 }
 
                 break;
@@ -714,6 +895,7 @@ public class Main implements ApplicationListener {
         }
     }
 
+    // Makes hitboxes for each projectile type.
     private Rectangle getProjectileHitbox(Projectile projectile) {
         if (projectile.getType().equals(Projectile.ORB)) {
             return new Rectangle(projectile.getX(), projectile.getY(), enemyOrbSize, enemyOrbSize);
@@ -726,6 +908,7 @@ public class Main implements ApplicationListener {
         return new Rectangle(projectile.getX(), projectile.getY(), playerProjectileWidth, playerProjectileHeight);
     }
 
+    // Gives score and starts the enemy death state.
     private void killEnemy(Enemy enemy, int scoreAward) {
         if (enemy.isDying()) return;
 
@@ -738,6 +921,7 @@ public class Main implements ApplicationListener {
 
         if (enemy.isBoss()) {
             bossAlive = false;
+            gameWon = true;
         } else {
             enemiesKilled++;
 
@@ -749,13 +933,17 @@ public class Main implements ApplicationListener {
         updateWindowTitle();
     }
 
+    // Spawns tougher enemies that were earned from kills.
     private void processPendingSpawns() {
+        if (bossAlive || gameWon) return;
+
         while (pendingToughSpawns > 0) {
             addToughEnemy();
             pendingToughSpawns--;
         }
     }
 
+    // Adds more enemies as score goes up, then starts the boss fight.
     private void increaseDifficulty() {
         if (score >= 50 && !bossSpawned) {
             addBoss();
@@ -764,7 +952,7 @@ public class Main implements ApplicationListener {
             return;
         }
 
-        if (bossAlive) return;
+        if (bossAlive || gameWon) return;
 
         while (score >= nextDifficultyScore) {
             enemySpeedBoost += 0.10f;
@@ -773,8 +961,9 @@ public class Main implements ApplicationListener {
         }
     }
 
+    // Keeps adding enemies over time until the boss shows up.
     private void spawnEnemiesOverTime(float delta) {
-        if (bossAlive) return;
+        if (bossAlive || gameWon) return;
 
         enemySpawnTimer -= delta;
 
@@ -789,6 +978,7 @@ public class Main implements ApplicationListener {
         }
     }
 
+    // Regular floating enemy.
     private void addRandomEnemy() {
         float x = MathUtils.random(5f, viewport.getWorldWidth() - 0.8f);
         float y = MathUtils.random(0f, viewport.getWorldHeight() - 1.0f);
@@ -798,6 +988,7 @@ public class Main implements ApplicationListener {
         enemies.add(enemy);
     }
 
+    // Tougher melee enemy.
     private void addToughEnemy() {
         float x = MathUtils.random(5f, viewport.getWorldWidth() - 0.95f);
         float y = MathUtils.random(0f, viewport.getWorldHeight() - 1.15f);
@@ -807,24 +998,34 @@ public class Main implements ApplicationListener {
         enemies.add(enemy);
     }
 
+    // Boss enemy starts alone.
     private void addBoss() {
+        for (int i = enemies.size() - 1; i >= 0; i--) {
+            Enemy enemy = enemies.get(i);
+
+            if (!enemy.isBoss()) {
+                enemies.remove(i);
+            }
+        }
+
         Enemy boss = new Enemy(5.8f, 2f, 0.8f, 0.8f, 120, 3, Enemy.BOSS);
-        boss.setOrbCooldown(0.35f);
+        boss.setOrbCooldown(2.30f);
         enemies.add(boss);
     }
 
     private float getEnemyWidth(Enemy enemy) {
-        if (enemy.isBoss()) return 1.25f;
+        if (enemy.isBoss()) return 1.45f;
         if (enemy.isTough()) return 0.95f;
         return 0.8f;
     }
 
     private float getEnemyHeight(Enemy enemy) {
-        if (enemy.isBoss()) return 1.45f;
+        if (enemy.isBoss()) return 2.2f;
         if (enemy.isTough()) return 1.15f;
         return 1.0f;
     }
 
+    // Counts enemies that are still alive.
     private int activeEnemyCount() {
         int count = 0;
 
@@ -837,6 +1038,7 @@ public class Main implements ApplicationListener {
         return count;
     }
 
+    // Moves the pickup after the player grabs it.
     private void moveCollectibleToRandomPosition() {
         float randomX = MathUtils.random(0.5f, viewport.getWorldWidth() - collectible.getWidth());
         float randomY = MathUtils.random(0.5f, viewport.getWorldHeight() - collectible.getHeight());
@@ -844,6 +1046,7 @@ public class Main implements ApplicationListener {
         collectible.setPosition(randomX, randomY);
     }
 
+    // Puts the whole game back to the start.
     private void resetGame() {
         score = 0;
         lives = 5;
@@ -857,6 +1060,7 @@ public class Main implements ApplicationListener {
         enemySpawnTimer = enemySpawnSeconds;
         collisionWait = 0f;
         gameOver = false;
+        gameWon = false;
         powerShotActive = false;
         powerShotTimer = 0f;
         enemiesCanShoot = true;
@@ -880,6 +1084,7 @@ public class Main implements ApplicationListener {
         updateWindowTitle();
     }
 
+    // Shows the score in the window title too.
     private void updateWindowTitle() {
         Gdx.graphics.setTitle("NapolitanScape - Score: " + score);
     }

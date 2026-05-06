@@ -2,6 +2,7 @@ package io.github.Naoilitanscape;
 
 public class Enemy {
 
+    // Enemy types used in the game.
     public static final String NORMAL = "NORMAL";
     public static final String TOUGH = "TOUGH";
     public static final String BOSS = "BOSS";
@@ -15,8 +16,10 @@ public class Enemy {
     private boolean dying;
     private float deathTimer;
     private float orbCooldown;
+    private int orbVolleyShotsLeft;
     private String type;
 
+    // This constructor is here for a basic enemy if no type is given.
     public Enemy(float x, float y, float speedX, float speedY, int health, int damage) {
         this(x, y, speedX, speedY, health, damage, NORMAL);
     }
@@ -32,37 +35,96 @@ public class Enemy {
         this.dying = false;
         this.deathTimer = 0f;
         this.orbCooldown = 2f;
+        this.orbVolleyShotsLeft = 0;
     }
 
-    public float getX() { return x; }
-    public void setX(float x) { this.x = x; }
+    public float getX() {
+        return x;
+    }
 
-    public float getY() { return y; }
-    public void setY(float y) { this.y = y; }
+    public void setX(float x) {
+        this.x = x;
+    }
 
-    public float getSpeedX() { return speedX; }
-    public void setSpeedX(float speedX) { this.speedX = speedX; }
+    public float getY() {
+        return y;
+    }
 
-    public float getSpeedY() { return speedY; }
-    public void setSpeedY(float speedY) { this.speedY = speedY; }
+    public void setY(float y) {
+        this.y = y;
+    }
 
-    public int getHealth() { return health; }
-    public void setHealth(int health) { this.health = health; }
+    public float getSpeedX() {
+        return speedX;
+    }
 
-    public int getDamage() { return damage; }
-    public void setDamage(int damage) { this.damage = damage; }
+    public void setSpeedX(float speedX) {
+        this.speedX = speedX;
+    }
 
-    public boolean isDying() { return dying; }
-    public void setDying(boolean dying) { this.dying = dying; }
+    public float getSpeedY() {
+        return speedY;
+    }
 
-    public float getDeathTimer() { return deathTimer; }
-    public void setDeathTimer(float deathTimer) { this.deathTimer = deathTimer; }
+    public void setSpeedY(float speedY) {
+        this.speedY = speedY;
+    }
 
-    public float getOrbCooldown() { return orbCooldown; }
-    public void setOrbCooldown(float orbCooldown) { this.orbCooldown = orbCooldown; }
+    public int getHealth() {
+        return health;
+    }
 
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
+    public void setHealth(int health) {
+        this.health = health;
+    }
+
+    public int getDamage() {
+        return damage;
+    }
+
+    public void setDamage(int damage) {
+        this.damage = damage;
+    }
+
+    public boolean isDying() {
+        return dying;
+    }
+
+    public void setDying(boolean dying) {
+        this.dying = dying;
+    }
+
+    public float getDeathTimer() {
+        return deathTimer;
+    }
+
+    public void setDeathTimer(float deathTimer) {
+        this.deathTimer = deathTimer;
+    }
+
+    public float getOrbCooldown() {
+        return orbCooldown;
+    }
+
+    public void setOrbCooldown(float orbCooldown) {
+        this.orbCooldown = orbCooldown;
+    }
+
+    public int getOrbVolleyShotsLeft() {
+        return orbVolleyShotsLeft;
+    }
+
+    public void setOrbVolleyShotsLeft(int orbVolleyShotsLeft) {
+        this.orbVolleyShotsLeft = orbVolleyShotsLeft;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
 
     public void takeDamage(int amount) {
         health -= amount;
@@ -83,15 +145,16 @@ public class Enemy {
     @Override
     public String toString() {
         return "Enemy{" +
-                "x=" + x +
-                ", y=" + y +
-                ", speedX=" + speedX +
-                ", speedY=" + speedY +
-                ", health=" + health +
-                ", damage=" + damage +
-                ", dying=" + dying +
-                ", orbCooldown=" + orbCooldown +
-                ", type='" + type + '\'' +
-                '}';
+            "x=" + x +
+            ", y=" + y +
+            ", speedX=" + speedX +
+            ", speedY=" + speedY +
+            ", health=" + health +
+            ", damage=" + damage +
+            ", dying=" + dying +
+            ", orbCooldown=" + orbCooldown +
+            ", orbVolleyShotsLeft=" + orbVolleyShotsLeft +
+            ", type='" + type + '\'' +
+            '}';
     }
 }
